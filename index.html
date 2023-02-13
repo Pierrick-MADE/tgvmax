@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+    <title>TGV_MAX</title>
+
+    <!-- coordinates data -->
+    <script src="city_data.js"></script>
+
+    <!-- interactive table -->
+    <script src="https://cdn.jsdelivr.net/npm/ag-grid-community/dist/ag-grid-community.min.noStyle.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community/styles/ag-grid.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community/styles/ag-theme-alpine.css"/>
+
+    <!-- leaflet map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css"
+    integrity="sha256-kLaT2GOSpHechhsozzB+flnD+zUyjE2LlfWPgU04xyI="
+    crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"
+    integrity="sha256-WBkoXOwTeyKclOHuWtc+i2uENFpDZ9YPdf5Hf+D7ewM="
+    crossorigin=""></script>
+</head>
+
+<style>
+    .row {
+        display: flex;
+        height:500px;
+    }
+
+    .column {
+        flex: 50%;
+    }
+</style>
+
+<body style="text-align:center">
+    <h1 style="color:red">TGVMAX</h1>
+    <select id="city_selector" onchange="update_data()"></select>
+    <input id="date_selector" type="date" onchange="update_data()">
+    <div class="row">
+        <div id="map" class="column"></div>
+        <div id="data_table" class="ag-theme-alpine column"></div>
+    </div>
+</body>
+
+<script>
+
+    // DATA SELECTOR
+    let options = "";
+    Object.keys(city_data).sort().forEach(city_name => {
+        options += "<option>" + city_name + "</option>";
+    });
+    document.getElementById("city_selector").innerHTML = options;
+
+    const today = new Date()
+    let tomorrow =  new Date()
+    tomorrow.setDate(today.getDate() + 1)
+    document.getElementById('date_selector').valueAsDate = tomorrow;
+
+    // TABLE
+    const gridOptions = {
+        columnDefs: [
+            {
+                field: 'destination',
+                filter: 'agTextColumnFilter',
+            },
+            {
+                field: 'heure_depart',
+                sort: 'asc',
+            },
+        ],
+        animateRows: true,
+        defaultColDef: {
+            sortable: true,
+            filter: true,
+            resizable: true,
+        },
+    };
+    const eGridDiv = document.getElementById('data_table');
+    new agGrid.Grid(eGridDiv, gridOptions);
+
+    function update_table(data) {
+        gridOptions.api.setRowData(data);
+        // gridOptions.api.sizeColumnsToFit();
+    }
+
+    // MAP
+    var map = L.map('map').setView([48.5, 2.3], 6);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    }).addTo(map);
+    var markersGroup = L.layerGroup().addTo(map);
+
+    function update_map(train_list) {
+        markersGroup.clearLayers();
+        const destinations_already_marked = new Set();
+        train_list.forEach(train => {
+            if (destinations_already_marked.has(train.destination)) {
+                return;
+            }
+            destinations_already_marked.add(train.destination);
+            var [lat, lng] = city_data[train.destination];
+            var marker = L.marker([lat, lng]).addTo(markersGroup);
+            marker.bindPopup(train.destination);
+            marker.on("popupopen", function (e) {
+                var filter_model = gridOptions.api.getFilterModel();
+                filter_model.destination = {
+                    "filter": train.destination,
+                    "filterType": "text",
+                    "type": "contains"
+                };
+                gridOptions.api.setFilterModel(filter_model);
+            });
+            marker.on("popupclose", function (e) {
+                var filter_model = gridOptions.api.getFilterModel();
+                delete filter_model.destination;
+                gridOptions.api.setFilterModel(filter_model);
+            });
+        });
+    }
+
+    // UPDATE DATA
+    function update_data() {
+        // define query
+        selected_date = document.getElementById("date_selector").value;
+        origin = document.getElementById("city_selector").value;
+        console.log(origin, selected_date);
+        url = `https://data.sncf.com/api/v2/catalog/datasets/tgvmax/exports/json`
+                + `?refine=date:"${selected_date}"`
+                + `&refine=od_happy_card:"OUI"`
+                + `&refine=origine:"${origin}"`;
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                console.log(data);
+                update_table(data);
+                update_map(data);
+            })
+    }
+</script>
+</html>
