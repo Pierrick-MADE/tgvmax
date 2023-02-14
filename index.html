@@ -25,23 +25,98 @@
 </head>
 
 <style>
-    .row {
-        display: flex;
-        height:500px;
+    html, body {
+        position: relative;
+        overflow: hidden;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        padding: 0;
     }
 
-    .column {
-        flex: 50%;
+    .page_container {
+        display: flex;
+        flex-flow: column;
+        height: 100%;
     }
+
+    .header {
+        flex: 0 1 auto;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .selectors {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .selectors > * {
+        padding: 7px;
+        margin: 5px;
+    }
+
+    .map_and_table_wrapper {
+        flex: 1 1 auto;
+        height: 100%;
+        width: 100%;
+    }
+    
+    #map {
+        float: left;
+        width: calc(60% - 20px);
+        height: calc(100% - 20px);
+        margin: 10px;
+        box-sizing: border-box;
+    }
+
+    #data_table {
+        float: right;
+        width: calc(40% - 20px);
+        height: calc(100% - 20px);
+        margin: 10px;
+        box-sizing: border-box;
+    }
+
+    @media only screen and (max-width: 850px) {
+        .map_and_table_wrapper {
+            flex: 1 1 auto;
+            position: relative;
+            height: 100%;
+            width: 100%;
+        }
+        #data_table {
+            position: absolute; 
+            bottom: 0;
+            width: calc(100% - 20px);
+            height: calc(40% - 20px);
+        }
+        #map {
+            position: absolute; 
+            top: 0;
+            width: calc(100% - 20px);
+            height: calc(60% - 20px);
+        }
+    }
+
 </style>
 
-<body style="text-align:center">
-    <h1 style="color:red">TGVMAX</h1>
-    <select id="city_selector" onchange="update_data()"></select>
-    <input id="date_selector" type="date" onchange="update_data()">
-    <div class="row">
-        <div id="map" class="column"></div>
-        <div id="data_table" class="ag-theme-alpine column"></div>
+<body>
+    <div class="page_container">
+        <div class="header">
+            <h1 style="color: red;">TGVMAX</h1>
+            <div class="selectors">
+                <select id="city_selector" onchange="update_data()"></select>
+                <input id="date_selector" type="date" onchange="update_data()">
+            </div>
+        </div>
+        <div class="map_and_table_wrapper">
+            <div id="map"></div>
+            <div id="data_table" class="ag-theme-alpine"></div>
+        </div>
     </div>
 </body>
 
