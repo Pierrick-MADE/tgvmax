@@ -22,6 +22,7 @@
     <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"
     integrity="sha256-WBkoXOwTeyKclOHuWtc+i2uENFpDZ9YPdf5Hf+D7ewM="
     crossorigin=""></script>
+    <script src="leaflet_custom.js"></script>
 </head>
 
 <style>
@@ -169,8 +170,15 @@
     }).addTo(map);
     var markersGroup = L.layerGroup().addTo(map);
 
-    function update_map(train_list) {
+    function update_map(origin, train_list) {
         markersGroup.clearLayers();
+
+        //add origine marker
+        var [lat, lng] = city_data[origin];
+        var marker = L.marker([lat, lng], {icon: get_leaflet_marker("#22e618")}).addTo(markersGroup);
+        marker.bindPopup(origin);
+        map.flyTo([lat, lng], 6);
+
         const destinations_already_marked = new Set();
         train_list.forEach(train => {
             if (destinations_already_marked.has(train.destination)) {
@@ -178,7 +186,7 @@
             }
             destinations_already_marked.add(train.destination);
             var [lat, lng] = city_data[train.destination];
-            var marker = L.marker([lat, lng]).addTo(markersGroup);
+            var marker = L.marker([lat, lng], {icon: get_leaflet_marker("#1898e6")}).addTo(markersGroup);
             marker.bindPopup(train.destination);
             marker.on("popupopen", function (e) {
                 var filter_model = gridOptions.api.getFilterModel();
@@ -212,7 +220,7 @@
             .then(data => {
                 console.log(data);
                 update_table(data);
-                update_map(data);
+                update_map(origin, data);
             })
     }
 </script>
