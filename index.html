@@ -13,7 +13,7 @@
     <!-- interactive table -->
     <script src="https://cdn.jsdelivr.net/npm/ag-grid-community/dist/ag-grid-community.min.noStyle.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community/styles/ag-grid.css"/>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community/styles/ag-theme-alpine.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community/styles/ag-theme-balham.css"/>
 
     <!-- leaflet map -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css"
@@ -116,7 +116,7 @@
         </div>
         <div class="map_and_table_wrapper">
             <div id="map"></div>
-            <div id="data_table" class="ag-theme-alpine"></div>
+            <div id="data_table" class="ag-theme-balham"></div>
         </div>
     </div>
 </body>
@@ -143,7 +143,13 @@
                 filter: 'agTextColumnFilter',
             },
             {
+                field: 'date',
+                filter: 'agDateColumnFilter',
+                sort: 'asc',
+            },
+            {
                 field: 'heure_depart',
+                headerName: 'Depart',
                 sort: 'asc',
             },
         ],
@@ -153,13 +159,16 @@
             filter: true,
             resizable: true,
         },
+        overlayLoadingTemplate:
+            '<span class="ag-overlay-loading-center">Chargement...</span>',
+            overlayNoRowsTemplate:
+            '<span class="ag-overlay-loading-center">Pas de voyages gratuits...</span>',
     };
     const eGridDiv = document.getElementById('data_table');
     new agGrid.Grid(eGridDiv, gridOptions);
 
     function update_table(data) {
         gridOptions.api.setRowData(data);
-        // gridOptions.api.sizeColumnsToFit();
     }
 
     // MAP
@@ -177,7 +186,7 @@
         var [lat, lng] = city_data[origin];
         var marker = L.marker([lat, lng], {icon: get_leaflet_marker("#22e618")}).addTo(markersGroup);
         marker.bindPopup(origin);
-        map.flyTo([lat, lng], 6);
+        map.flyTo([lat, lng], 7, {animate: true, duration: 1});
 
         const destinations_already_marked = new Set();
         train_list.forEach(train => {
@@ -187,7 +196,12 @@
             destinations_already_marked.add(train.destination);
             var [lat, lng] = city_data[train.destination];
             var marker = L.marker([lat, lng], {icon: get_leaflet_marker("#1898e6")}).addTo(markersGroup);
-            marker.bindPopup(train.destination);
+            //marker.bindPopup(train.destination);
+            marker.bindPopup(`<div style="text-align:center">
+                    <b>${train.destination}</b>
+                    <br>
+                    <a href="#" onclick='load_new_city("${train.destination}")'>Choisir comme origine</a>
+                </div>`);
             marker.on("popupopen", function (e) {
                 var filter_model = gridOptions.api.getFilterModel();
                 filter_model.destination = {
@@ -207,6 +221,9 @@
 
     // UPDATE DATA
     function update_data() {
+        // show loading overlay on table
+        gridOptions.api.showLoadingOverlay();
+
         // define query
         selected_date = document.getElementById("date_selector").value;
         origin = document.getElementById("city_selector").value;
@@ -223,5 +240,13 @@
                 update_map(origin, data);
             })
     }
+
+    function load_new_city(city_name) {
+        document.getElementById("city_selector").value = city_name;
+        update_data();
+    }
+
+    load_new_city("PARIS (intramuros)");
+
 </script>
 </html>
