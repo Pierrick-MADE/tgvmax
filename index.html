@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
     <title>TGV_MAX</title>
 
@@ -12,21 +13,20 @@
 
     <!-- interactive table -->
     <script src="https://cdn.jsdelivr.net/npm/ag-grid-community/dist/ag-grid-community.min.noStyle.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community/styles/ag-grid.css"/>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community/styles/ag-theme-balham.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community/styles/ag-grid.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community/styles/ag-theme-balham.css" />
 
     <!-- leaflet map -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css"
-    integrity="sha256-kLaT2GOSpHechhsozzB+flnD+zUyjE2LlfWPgU04xyI="
-    crossorigin=""/>
+        integrity="sha256-kLaT2GOSpHechhsozzB+flnD+zUyjE2LlfWPgU04xyI=" crossorigin="" />
     <script src="https://unpkg.com/leaflet@1.9.3/dist/leaflet.js"
-    integrity="sha256-WBkoXOwTeyKclOHuWtc+i2uENFpDZ9YPdf5Hf+D7ewM="
-    crossorigin=""></script>
+        integrity="sha256-WBkoXOwTeyKclOHuWtc+i2uENFpDZ9YPdf5Hf+D7ewM=" crossorigin=""></script>
     <script src="leaflet_custom.js"></script>
 </head>
 
 <style>
-    html, body {
+    html,
+    body {
         position: relative;
         overflow: hidden;
         width: 100%;
@@ -55,7 +55,7 @@
         justify-content: center;
     }
 
-    .selectors > * {
+    .selectors>* {
         padding: 7px;
         margin: 5px;
     }
@@ -65,7 +65,7 @@
         height: 100%;
         width: 100%;
     }
-    
+
     #map {
         float: left;
         width: calc(60% - 20px);
@@ -89,20 +89,21 @@
             height: 100%;
             width: 100%;
         }
+
         #data_table {
-            position: absolute; 
+            position: absolute;
             bottom: 0;
             width: calc(100% - 20px);
             height: calc(40% - 20px);
         }
+
         #map {
-            position: absolute; 
+            position: absolute;
             top: 0;
             width: calc(100% - 20px);
             height: calc(60% - 20px);
         }
     }
-
 </style>
 
 <body>
@@ -131,11 +132,12 @@
     document.getElementById("city_selector").innerHTML = options;
 
     const today = new Date()
-    let tomorrow =  new Date()
+    let tomorrow = new Date()
     tomorrow.setDate(today.getDate() + 1)
     document.getElementById('date_selector').valueAsDate = tomorrow;
 
     // TABLE
+    let gridApi;
     const gridOptions = {
         columnDefs: [
             {
@@ -155,6 +157,7 @@
                 field: 'heure_arrivee',
             },
         ],
+        rowData: [],
         animateRows: true,
         defaultColDef: {
             sortable: true,
@@ -163,14 +166,12 @@
         },
         overlayLoadingTemplate:
             '<span class="ag-overlay-loading-center">Chargement...</span>',
-            overlayNoRowsTemplate:
+        overlayNoRowsTemplate:
             '<span class="ag-overlay-loading-center">Pas de voyages gratuits...</span>',
     };
-    const eGridDiv = document.getElementById('data_table');
-    new agGrid.Grid(eGridDiv, gridOptions);
 
     function update_table(data) {
-        gridOptions.api.setRowData(data);
+        gridApi.setGridOption("rowData", data);
     }
 
     // MAP
@@ -186,9 +187,9 @@
 
         //add origine marker
         var [lat, lng] = city_data[origin];
-        var marker = L.marker([lat, lng], {icon: get_leaflet_marker("#22e618")}).addTo(markersGroup);
+        var marker = L.marker([lat, lng], { icon: get_leaflet_marker("#22e618") }).addTo(markersGroup);
         marker.bindPopup(origin);
-        map.flyTo([lat, lng], 7, {animate: true, duration: 1});
+        map.flyTo([lat, lng], 7, { animate: true, duration: 1 });
 
         const destinations_already_marked = new Set();
         train_list.forEach(train => {
@@ -197,7 +198,7 @@
             }
             destinations_already_marked.add(train.destination);
             var [lat, lng] = city_data[train.destination];
-            var marker = L.marker([lat, lng], {icon: get_leaflet_marker("#1898e6")}).addTo(markersGroup);
+            var marker = L.marker([lat, lng], { icon: get_leaflet_marker("#1898e6") }).addTo(markersGroup);
             //marker.bindPopup(train.destination);
             marker.bindPopup(`<div style="text-align:center">
                     <b>${train.destination}</b>
@@ -205,18 +206,18 @@
                     <a href="#" onclick='load_new_city("${train.destination}")'>Choisir comme origine</a>
                 </div>`);
             marker.on("popupopen", function (e) {
-                var filter_model = gridOptions.api.getFilterModel();
+                var filter_model = gridApi.getFilterModel();
                 filter_model.destination = {
                     "filter": train.destination,
                     "filterType": "text",
                     "type": "contains"
                 };
-                gridOptions.api.setFilterModel(filter_model);
+                gridApi.setFilterModel(filter_model);
             });
             marker.on("popupclose", function (e) {
-                var filter_model = gridOptions.api.getFilterModel();
+                var filter_model = gridApi.getFilterModel();
                 delete filter_model.destination;
-                gridOptions.api.setFilterModel(filter_model);
+                gridApi.setFilterModel(filter_model);
             });
         });
     }
@@ -224,16 +225,16 @@
     // UPDATE DATA
     function update_data() {
         // show loading overlay on table
-        gridOptions.api.showLoadingOverlay();
+        gridApi.showLoadingOverlay();
 
         // define query
         selected_date = document.getElementById("date_selector").value;
         origin = document.getElementById("city_selector").value;
         console.log(origin, selected_date);
         url = `https://data.sncf.com/api/v2/catalog/datasets/tgvmax/exports/json`
-                + `?refine=date:"${selected_date}"`
-                + `&refine=od_happy_card:"OUI"`
-                + `&refine=origine:"${origin}"`;
+            + `?refine=date:"${selected_date}"`
+            + `&refine=od_happy_card:"OUI"`
+            + `&refine=origine:"${origin}"`;
         fetch(url)
             .then(response => response.json())
             .then(data => {
@@ -248,7 +249,13 @@
         update_data();
     }
 
-    load_new_city("PARIS (intramuros)");
+    // setup the grid after the page has finished loading
+    document.addEventListener("DOMContentLoaded", function () {
+        var gridDiv = document.getElementById('data_table');
+        gridApi = agGrid.createGrid(gridDiv, gridOptions);
+        load_new_city("PARIS (intramuros)");
+    });
 
 </script>
+
 </html>
