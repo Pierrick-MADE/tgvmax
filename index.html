@@ -104,6 +104,11 @@
             height: calc(60% - 20px);
         }
     }
+
+    /* Hide sort order numbers but keep arrows */
+    .ag-header-cell-sortable .ag-sort-order {
+        display: none !important;
+    }
 </style>
 
 <body>
@@ -112,7 +117,8 @@
             <h1 style="color: red;">TGVMAX</h1>
             <div class="selectors">
                 <select id="city_selector" onchange="update_data()"></select>
-                <input id="date_selector" type="date" onchange="update_data()">
+                <input id="start_date_selector" type="date" onchange="update_data()">
+                <input id="end_date_selector" type="date" onchange="update_data()">
             </div>
         </div>
         <div class="map_and_table_wrapper">
@@ -134,7 +140,8 @@
     const today = new Date()
     let tomorrow = new Date()
     tomorrow.setDate(today.getDate() + 1)
-    document.getElementById('date_selector').valueAsDate = tomorrow;
+    document.getElementById('start_date_selector').valueAsDate = today;
+    document.getElementById('end_date_selector').valueAsDate = tomorrow;
 
     // TABLE
     let gridApi;
@@ -143,18 +150,30 @@
             {
                 field: 'destination',
                 filter: 'agTextColumnFilter',
-            },/*
+                minWidth: 100,
+                maxWidth: 200,
+                flex: 2,
+            },
             {
                 field: 'date',
                 filter: 'agDateColumnFilter',
                 sort: 'asc',
-            },*/
+                minWidth: 90,
+                flex: 1,
+
+            },
             {
                 field: 'heure_depart',
+                headerName: 'Depart',
                 sort: 'asc',
+                minWidth: 60,
+                flex: 1,
             },
             {
                 field: 'heure_arrivee',
+                headerName: 'Arrivee',
+                minWidth: 60,
+                flex: 1,
             },
         ],
         rowData: [],
@@ -228,20 +247,42 @@
         gridApi.showLoadingOverlay();
 
         // define query
-        selected_date = document.getElementById("date_selector").value;
+        const startDate = document.getElementById("start_date_selector").value;
+        const endDate = document.getElementById("end_date_selector").value;
         origin = document.getElementById("city_selector").value;
-        console.log(origin, selected_date);
-        url = `https://data.sncf.com/api/v2/catalog/datasets/tgvmax/exports/json`
-            + `?refine=date:"${selected_date}"`
-            + `&refine=od_happy_card:"OUI"`
-            + `&refine=origine:"${origin}"`;
-        fetch(url)
-            .then(response => response.json())
-            .then(data => {
-                console.log(data);
-                update_table(data);
-                update_map(origin, data);
-            })
+        const dateList = generateDateRange(startDate, endDate);
+
+        // Make requests for each date and combine the results
+        const requests = dateList.map(date => {
+            const url = `https://data.sncf.com/api/v2/catalog/datasets/tgvmax/exports/json`
+                + `?refine=od_happy_card:"OUI"`
+                + `&refine=origine:"${origin}"`
+                + `&refine=date:"${date}"`;
+            return fetch(url).then(response => response.json());
+        });
+
+        // Combine all the data from the promises
+        Promise.all(requests)
+            .then(results => {
+                // Flatten the array of arrays into a single array
+                const combinedData = results.flat();
+                console.log(combinedData);
+                update_table(combinedData);
+                update_map(origin, combinedData);
+            });
+    }
+
+    function generateDateRange(startDate, endDate) {
+        let currentDate = new Date(startDate);
+        const end = new Date(endDate);
+        const dateArray = [];
+
+        while (currentDate <= end) {
+            dateArray.push(currentDate.toISOString().split('T')[0]);
+            currentDate.setDate(currentDate.getDate() + 1);
+        }
+
+        return dateArray;
     }
 
     function load_new_city(city_name) {
